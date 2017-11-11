@@ -63,18 +63,19 @@ class MyWindow(QWidget):
 
     def init_widgets(self):
         self.whole_vbox = QVBoxLayout(self)
-        upper_hbox = QHBoxLayout()
+        self.upper_hbox = QHBoxLayout()
         middle_hbox = QHBoxLayout()
         lower_hbox = QHBoxLayout()
 
         add_account_pushbutton = QPushButton('+')
-        upper_hbox.addWidget(add_account_pushbutton)
+        add_account_pushbutton.clicked.connect(self.add_acc)
+        self.upper_hbox.addWidget(add_account_pushbutton)
         for key, value in self.accs.items():
             acc_pushbutton = QPushButton(QIcon(value['icon_path']), None, None)
             acc_pushbutton.setWhatsThis(key)
             acc_pushbutton.setCheckable(True)
-            acc_pushbutton.toggled.connect(self.choose_account)
-            upper_hbox.addWidget(acc_pushbutton)
+            acc_pushbutton.toggled.connect(self.choose_acc)
+            self.upper_hbox.addWidget(acc_pushbutton)
 
         self.compose_textedit = MyComposer()
         middle_hbox.addWidget(self.compose_textedit)
@@ -83,7 +84,7 @@ class MyWindow(QWidget):
         submit_pushbutton.clicked.connect(self.submit)
         middle_hbox.addWidget(submit_pushbutton)
 
-        self.whole_vbox.addLayout(upper_hbox)
+        self.whole_vbox.addLayout(self.upper_hbox)
         self.whole_vbox.addLayout(middle_hbox)
         self.whole_vbox.addLayout(lower_hbox)
 
@@ -96,8 +97,21 @@ class MyWindow(QWidget):
         for key in self.active_accs:
             self.accs[key]['api'].update_status(submittext)
         self.compose_textedit.setPlainText("")
-    
-    def choose_account(self):
+
+    def add_acc(self):
+        api, name = twitter.authentication()
+        self.accs[name] = {'api' : api}
+        if not glob.glob("images/" + name + ".*"):
+            self.accs[name]['icon_path'] = twitter.getmyicon(api, name)
+        else:
+            self.accs[name]['icon_path'] = glob.glob("images/" + name + ".*")[0]
+        acc_pushbutton = QPushButton(QIcon(self.accs[name]['icon_path']), None, None)
+        acc_pushbutton.setWhatsThis(name)
+        acc_pushbutton.setCheckable(True)
+        acc_pushbutton.toggled.connect(self.choose_acc)
+        self.upper_hbox.addWidget(acc_pushbutton)
+
+    def choose_acc(self):
         acc = self.sender()
         if acc.isChecked():
             self.active_accs.append(acc.whatsThis())
