@@ -5,10 +5,15 @@ import twitter
 import glob
 import tweepy
 from PyQt5.QtWidgets import (QApplication, QWidget, QHBoxLayout, QVBoxLayout,
-                             QPlainTextEdit, QPushButton, QSizePolicy)
-from PyQt5.QtGui import QIcon
+                             QPlainTextEdit, QPushButton, QSizePolicy, QLabel)
+from PyQt5.QtGui import QIcon, QPixmap
+from PyQt5.QtCore import Qt, QSize
 
 class MyComposer(QPlainTextEdit):
+    def __init__(self, attach_callback):
+        super().__init__()
+        self.callback = attach_callback
+
     def dropEvent(self, event):
         event.accept()
         mimeData = event.mimeData()
@@ -18,6 +23,13 @@ class MyComposer(QPlainTextEdit):
             print('Data:', mimeData.data(mimetype))
             print()
         print()
+
+    def keyPressEvent(self, e):
+        if e.modifiers() == Qt.ControlModifier and (e.key() == Qt.Key_V):
+            image = QApplication.clipboard().image()
+            self.callback(image)
+        else:
+            super().keyPressEvent(e)
 
 class MyWindow(QWidget):
     '''main window'''
@@ -65,7 +77,7 @@ class MyWindow(QWidget):
         self.whole_vbox = QVBoxLayout(self)
         self.upper_hbox = QHBoxLayout()
         middle_hbox = QHBoxLayout()
-        lower_hbox = QHBoxLayout()
+        self.lower_hbox = QHBoxLayout()
 
         add_account_pushbutton = QPushButton('+')
         add_account_pushbutton.clicked.connect(self.add_acc)
@@ -77,7 +89,7 @@ class MyWindow(QWidget):
             acc_pushbutton.toggled.connect(self.choose_acc)
             self.upper_hbox.addWidget(acc_pushbutton)
 
-        self.compose_textedit = MyComposer()
+        self.compose_textedit = MyComposer(self.attach)
         middle_hbox.addWidget(self.compose_textedit)
         submit_pushbutton = QPushButton('submit')
         submit_pushbutton.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Ignored)
@@ -86,7 +98,7 @@ class MyWindow(QWidget):
 
         self.whole_vbox.addLayout(self.upper_hbox)
         self.whole_vbox.addLayout(middle_hbox)
-        self.whole_vbox.addLayout(lower_hbox)
+        self.whole_vbox.addLayout(self.lower_hbox)
 
     def submit(self):
         if not self.active_accs:
@@ -116,7 +128,14 @@ class MyWindow(QWidget):
         if acc.isChecked():
             self.active_accs.append(acc.whatsThis())
         else:
-            self.active_accs.remove(acc.whatsThis())        
+            self.active_accs.remove(acc.whatsThis())
+
+    def attach(self, image):
+        attached_label = QLabel()
+        attached_pixmap = QPixmap.fromImage(image)
+        attached_pixmap = attached_pixmap.scaled(QSize(60, 60), 1, 1)
+        attached_label.setPixmap(attached_pixmap)
+        self.lower_hbox.addWidget(attached_label)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
