@@ -27,7 +27,10 @@ class MyComposer(QPlainTextEdit):
     def keyPressEvent(self, e):
         if e.modifiers() == Qt.ControlModifier and (e.key() == Qt.Key_V):
             image = QApplication.clipboard().image()
-            self.callback(image)
+            if image.isNull():
+                super().keyPressEvent(e)
+            else:
+                self.callback(image)
         else:
             super().keyPressEvent(e)
 
@@ -89,12 +92,14 @@ class MyWindow(QWidget):
             acc_pushbutton.toggled.connect(self.choose_acc)
             self.upper_hbox.addWidget(acc_pushbutton)
 
-        self.compose_textedit = MyComposer(self.attach)
+        self.compose_textedit = MyComposer(self.attach_show)
         middle_hbox.addWidget(self.compose_textedit)
         submit_pushbutton = QPushButton('submit')
         submit_pushbutton.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Ignored)
         submit_pushbutton.clicked.connect(self.submit)
         middle_hbox.addWidget(submit_pushbutton)
+
+        self.lower_hbox.addStretch()
 
         self.whole_vbox.addLayout(self.upper_hbox)
         self.whole_vbox.addLayout(middle_hbox)
@@ -130,12 +135,15 @@ class MyWindow(QWidget):
         else:
             self.active_accs.remove(acc.whatsThis())
 
-    def attach(self, image):
+    def attach_show(self, image):
+        image_cnt = self.lower_hbox.count()
+        if image_cnt == 5:
+            return
         attached_label = QLabel()
         attached_pixmap = QPixmap.fromImage(image)
         attached_pixmap = attached_pixmap.scaled(QSize(60, 60), 1, 1)
         attached_label.setPixmap(attached_pixmap)
-        self.lower_hbox.addWidget(attached_label)
+        self.lower_hbox.insertWidget(image_cnt - 1, attached_label)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
