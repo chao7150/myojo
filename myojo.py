@@ -5,7 +5,8 @@ import twitter
 import glob
 import tweepy
 from PyQt5.QtWidgets import (QApplication, QWidget, QHBoxLayout, QVBoxLayout,
-                             QPlainTextEdit, QPushButton, QSizePolicy, QLabel)
+                             QPlainTextEdit, QPushButton, QSizePolicy, QLabel,
+                             QMenu)
 from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtCore import Qt, QSize
 
@@ -13,6 +14,7 @@ class MyComposer(QPlainTextEdit):
     def __init__(self, attach_callback):
         super().__init__()
         self.callback = attach_callback
+        self.attached_images = []
 
     def dropEvent(self, event):
         event.accept()
@@ -23,16 +25,46 @@ class MyComposer(QPlainTextEdit):
             print('Data:', mimeData.data(mimetype))
             print()
         print()
+        filenames = mimeData.text().replace('\r\n', '').replace('file://', ' ').strip().split()
+        print(filenames)
+        for filename in filenames:
+            with open(filename, 'rb') as f:
+                data = f.read()
+            if self.callback(filename=filename):
+                self.attached_images.append(filename)
 
     def keyPressEvent(self, e):
         if e.modifiers() == Qt.ControlModifier and (e.key() == Qt.Key_V):
+            mimeData = QApplication.clipboard().mimeData()
+            print('dropEvent')
+            for mimetype in mimeData.formats():
+                print('MIMEType:', mimetype)
+                print('Data:', mimeData.data(mimetype))
+                print()
+            print()
             image = QApplication.clipboard().image()
             if image.isNull():
                 super().keyPressEvent(e)
             else:
-                self.callback(image)
+                print(image.bits())
+                self.callback(Qimg=image)
         else:
             super().keyPressEvent(e)
+
+class IconLabel(QLabel):
+    def __init__(self, parent, filename):
+        super().__init__()
+        self.parent = parent
+        self.filename = filename
+
+    def contextMenuEvent(self, event):
+        menu = QMenu()
+        delete_action = menu.addAction('delete')
+        action = menu.exec_(self.mapToGlobal(event.pos()))
+        if action == delete_action:
+            self.parent.lower_hbox.removeWidget(self)
+            self.parent.compose_textedit.attached_images.remove(self.filename)
+            print(self.parent.compose_textedit.attached_images)
 
 class MyWindow(QWidget):
     '''main window'''
@@ -108,12 +140,28 @@ class MyWindow(QWidget):
     def submit(self):
         if not self.active_accs:
             return
-        submittext = self.compose_textedit.toPlainText()
-        if not submittext:
-            return
-        for key in self.active_accs:
-            self.accs[key]['api'].update_status(submittext)
+        submit_text = self.compose_textedit.toPlainText()
+        submit_images = self.compose_textedit.attached_images
+
+        if not submit_images:
+            if not submit_text:
+                return False
+            for key in self.active_accs:
+                self.accs[key]['api'].update_status(submit_text)
+        else:
+            for key in self.active_accs:
+                media_ids = [self.accs[key]['api'].media_upload(i).media_id_string for i in submit_images]
+                self.accs[key]['api'].update_status(status=submit_text, media_ids=media_ids)
+
         self.compose_textedit.setPlainText("")
+        self.compose_textedit.attached_images = []
+        while self.lower_hbox.count() > 1:
+            item = self.lower_hbox.takeAt(0)
+            if not item:
+                continue
+            w = item.widget()
+            if w:
+                w.deleteLater()
 
     def add_acc(self):
         api, name = twitter.authentication()
@@ -135,15 +183,19 @@ class MyWindow(QWidget):
         else:
             self.active_accs.remove(acc.whatsThis())
 
-    def attach_show(self, image):
+    def attach_show(self, Qimg=None, filename=None):
         image_cnt = self.lower_hbox.count()
         if image_cnt == 5:
-            return
-        attached_label = QLabel()
-        attached_pixmap = QPixmap.fromImage(image)
+            return False
+        attached_label = IconLabel(self, filename)
+        if Qimg is not None:
+            attached_pixmap = QPixmap.fromImage(Qimg)
+        elif filename is not None:
+            attached_pixmap = QPixmap(filename)
         attached_pixmap = attached_pixmap.scaled(QSize(60, 60), 1, 1)
         attached_label.setPixmap(attached_pixmap)
         self.lower_hbox.insertWidget(image_cnt - 1, attached_label)
+        return True
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
