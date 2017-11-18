@@ -3,7 +3,8 @@ import os
 import json
 import twitter
 import glob
-import tweepy
+from PIL import Image
+import io
 from PyQt5.QtWidgets import (QApplication, QWidget, QHBoxLayout, QVBoxLayout,
                              QPlainTextEdit, QPushButton, QSizePolicy, QLabel,
                              QMenu)
@@ -28,26 +29,41 @@ class MyComposer(QPlainTextEdit):
         filenames = mimeData.text().replace('\r\n', '').replace('file://', ' ').strip().split()
         print(filenames)
         for filename in filenames:
-            with open(filename, 'rb') as f:
-                data = f.read()
             if self.callback(filename=filename):
                 self.attached_images.append(filename)
 
     def keyPressEvent(self, e):
         if e.modifiers() == Qt.ControlModifier and (e.key() == Qt.Key_V):
             mimeData = QApplication.clipboard().mimeData()
-            print('dropEvent')
-            for mimetype in mimeData.formats():
-                print('MIMEType:', mimetype)
-                print('Data:', mimeData.data(mimetype))
-                print()
-            print()
-            image = QApplication.clipboard().image()
-            if image.isNull():
-                super().keyPressEvent(e)
+            if mimeData.hasImage():
+                num = str(len(os.listdir('tmp')))
+                if ('image/gif' in mimeData.formats()) or ('image/jpeg' in mimeData.formats()) or ('image/png' in mimeData.formats()):
+                    if 'image/gif' in mimeData.formats():
+                        mimetype = 'image/gif'
+                        ext = 'gif'
+                    elif 'image/jpeg' in mimeData.formats():
+                        mimetype = 'image/jpeg'
+                        ext = 'jpeg'
+                    elif 'image/png' in mimeData.formats():
+                        mimetype = 'image/png'
+                        ext = 'png'
+                    filename = 'tmp/img' + num + '.' + ext
+                    with open(filename, 'wb') as fp:
+                        fp.write(mimeData.data(mimetype))
+                else:
+                    for fmt in mimeData.formats():
+                        if fmt[:6] == 'image/':
+                            mimetype = fmt
+                            break
+                    img_pseudofile = io.BytesIO(mimeData.data(mimetype))
+                    img_pil = Image.open(img_pseudofile)
+                    filename = 'tmp/img' + num + '.png'
+                    img_pil.save(filename)
+                if self.callback(filename=filename):
+                    self.attached_images.append(filename)
             else:
-                print(image.bits())
-                self.callback(Qimg=image)
+                super().keyPressEvent(e)
+
         else:
             super().keyPressEvent(e)
 
@@ -65,7 +81,7 @@ class IconLabel(QLabel):
             self.parent.lower_hbox.removeWidget(self)
             self.parent.compose_textedit.attached_images.remove(self.filename)
             print(self.parent.compose_textedit.attached_images)
-
+            
 class MyWindow(QWidget):
     '''main window'''
     
@@ -74,11 +90,16 @@ class MyWindow(QWidget):
         self.accs = {}
         self.active_accs = []
 
+        self.init_directory()
         self.init_accounts()
         self.init_window()
         self.init_widgets()
         self.show()
         sys.exit(app.exec_())
+
+    def init_directory(self):
+        if not os.path.isdir('tmp'):
+            os.mkdir('tmp')
 
     def init_accounts(self):
         '''load account AT and AS from local and create api object and stream'''
@@ -196,6 +217,10 @@ class MyWindow(QWidget):
         attached_label.setPixmap(attached_pixmap)
         self.lower_hbox.insertWidget(image_cnt - 1, attached_label)
         return True
+
+    def closeEvent(self, event):
+        for tmp in os.listdir('tmp'):
+            os.remove(tmp)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
