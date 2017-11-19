@@ -78,9 +78,11 @@ class IconLabel(QLabel):
         delete_action = menu.addAction('delete')
         action = menu.exec_(self.mapToGlobal(event.pos()))
         if action == delete_action:
-            self.parent.lower_hbox.removeWidget(self)
             self.parent.compose_textedit.attached_images.remove(self.filename)
             print(self.parent.compose_textedit.attached_images)
+            self.parent.lower_hbox.removeWidget(self)
+            self.deleteLater()
+            self = None
             
 class MyWindow(QWidget):
     '''main window'''
@@ -219,8 +221,10 @@ class MyWindow(QWidget):
         return True
 
     def closeEvent(self, event):
+        print(os.listdir('tmp'))
         for tmp in os.listdir('tmp'):
-            os.remove(tmp)
+            filename = 'tmp/' + tmp
+            os.remove(filename)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
