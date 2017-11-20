@@ -106,7 +106,7 @@ class MyWindow(QWidget):
     def init_window(self):
         #self.setGeometry(300, 100, 200, 125)
         self.setWindowTitle("myojo")
-        self.setWindowIcon(QIcon('icon_myojo.png'))
+        self.setWindowIcon(QIcon('icon_myojo.ico'))
 
     def init_widgets(self):
         self.whole_vbox = QVBoxLayout(self)
