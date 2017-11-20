@@ -2,3 +2,6 @@ auth.json
 __pycache__
 images
 tmp
+myojo.spec
+build
+dist

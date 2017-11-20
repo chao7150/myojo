@@ -37,28 +37,9 @@ class MyComposer(QPlainTextEdit):
             mimeData = QApplication.clipboard().mimeData()
             if mimeData.hasImage():
                 num = str(len(os.listdir('tmp')))
-                if ('image/gif' in mimeData.formats()) or ('image/jpeg' in mimeData.formats()) or ('image/png' in mimeData.formats()):
-                    if 'image/gif' in mimeData.formats():
-                        mimetype = 'image/gif'
-                        ext = 'gif'
-                    elif 'image/jpeg' in mimeData.formats():
-                        mimetype = 'image/jpeg'
-                        ext = 'jpeg'
-                    elif 'image/png' in mimeData.formats():
-                        mimetype = 'image/png'
-                        ext = 'png'
-                    filename = 'tmp/img' + num + '.' + ext
-                    with open(filename, 'wb') as fp:
-                        fp.write(mimeData.data(mimetype))
-                else:
-                    for fmt in mimeData.formats():
-                        if fmt[:6] == 'image/':
-                            mimetype = fmt
-                            break
-                    img_pseudofile = io.BytesIO(mimeData.data(mimetype))
-                    img_pil = Image.open(img_pseudofile)
-                    filename = 'tmp/img' + num + '.png'
-                    img_pil.save(filename)
+                filename = 'tmp/img' + num + '.png'
+                image_Q = QApplication.clipboard().image()
+                image_Q.save(filename)
                 if self.callback(filename=filename):
                     self.attached_images.append(filename)
             else:
