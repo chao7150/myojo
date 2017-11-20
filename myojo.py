@@ -12,27 +12,23 @@ from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtCore import Qt, QSize
 
 class MyComposer(QPlainTextEdit):
-    def __init__(self, attach_callback):
+    def __init__(self, parent, attach_callback):
         super().__init__()
+        self.parent = parent
         self.callback = attach_callback
         self.attached_images = []
 
     def dropEvent(self, event):
         event.accept()
         mimeData = event.mimeData()
-        print('dropEvent')
-        for mimetype in mimeData.formats():
-            print('MIMEType:', mimetype)
-            print('Data:', mimeData.data(mimetype))
-            print()
-        print()
         filenames = mimeData.text().replace('\r\n', '').replace('file://', ' ').strip().split()
-        print(filenames)
         for filename in filenames:
             if self.callback(filename=filename):
                 self.attached_images.append(filename)
 
     def keyPressEvent(self, e):
+        if e.modifiers() == Qt.ControlModifier and (e.key() == Qt.Key_Return or e.key() == Qt.Key_Enter):
+            self.parent.submit()
         if e.modifiers() == Qt.ControlModifier and (e.key() == Qt.Key_V):
             mimeData = QApplication.clipboard().mimeData()
             if mimeData.hasImage():
@@ -60,7 +56,6 @@ class IconLabel(QLabel):
         action = menu.exec_(self.mapToGlobal(event.pos()))
         if action == delete_action:
             self.parent.compose_textedit.attached_images.remove(self.filename)
-            print(self.parent.compose_textedit.attached_images)
             self.parent.lower_hbox.removeWidget(self)
             self.deleteLater()
             self = None
@@ -111,6 +106,7 @@ class MyWindow(QWidget):
     def init_window(self):
         #self.setGeometry(300, 100, 200, 125)
         self.setWindowTitle("myojo")
+        self.setWindowIcon(QIcon('icon_myojo.png'))
 
     def init_widgets(self):
         self.whole_vbox = QVBoxLayout(self)
@@ -128,12 +124,12 @@ class MyWindow(QWidget):
             acc_pushbutton.toggled.connect(self.choose_acc)
             self.upper_hbox.addWidget(acc_pushbutton)
 
-        self.compose_textedit = MyComposer(self.attach_show)
+        self.compose_textedit = MyComposer(self, self.attach_show)
         middle_hbox.addWidget(self.compose_textedit)
-        submit_pushbutton = QPushButton('submit')
-        submit_pushbutton.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Ignored)
-        submit_pushbutton.clicked.connect(self.submit)
-        middle_hbox.addWidget(submit_pushbutton)
+        self.submit_pushbutton = QPushButton('submit')
+        self.submit_pushbutton.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Ignored)
+        self.submit_pushbutton.clicked.connect(self.submit)
+        middle_hbox.addWidget(self.submit_pushbutton)
 
         self.lower_hbox.addStretch()
 
@@ -202,7 +198,6 @@ class MyWindow(QWidget):
         return True
 
     def closeEvent(self, event):
-        print(os.listdir('tmp'))
         for tmp in os.listdir('tmp'):
             filename = 'tmp/' + tmp
             os.remove(filename)
