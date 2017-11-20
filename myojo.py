@@ -37,8 +37,11 @@ class MyComposer(QPlainTextEdit):
             mimeData = QApplication.clipboard().mimeData()
             if mimeData.hasImage():
                 num = str(len(os.listdir('tmp')))
-                image_Q = mimeData.image()
-                print(image_Q.format())
+                filename = 'tmp/img' + num + '.png'
+                image_Q = QApplication.clipboard().image()
+                image_Q.save(filename)
+                if self.callback(filename=filename):
+                    self.attached_images.append(filename)
             else:
                 super().keyPressEvent(e)
 
